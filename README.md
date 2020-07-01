@@ -6,11 +6,11 @@ This project is tested on [ESP32-DevKitC V4](https://docs.espressif.com/projects
 
 [Install PlatformIO in VSCode IDE](https://docs.platformio.org/en/latest/ide/vscode.html#platformio-ide-for-vscode)  
 
-*Tested on*
-PlatformIO Core: 4.3.4
-PlatformIO Home: 3.2.3
-framework-espidf 3.40001.200521 (4.0.1)
-toolchain-xtensa32 2.80200.200226 (8.2.0)
+*Tested on*  
+* PlatformIO Core: 4.3.4
+* PlatformIO Home: 3.2.3
+* framework-espidf 3.40001.200521 (4.0.1)
+* toolchain-xtensa32 2.80200.200226 (8.2.0)
 
 ## Getting Started  
 
