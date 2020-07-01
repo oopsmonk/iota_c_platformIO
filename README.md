@@ -6,6 +6,12 @@ This project is tested on [ESP32-DevKitC V4](https://docs.espressif.com/projects
 
 [Install PlatformIO in VSCode IDE](https://docs.platformio.org/en/latest/ide/vscode.html#platformio-ide-for-vscode)  
 
+*Tested on*  
+* PlatformIO Core: 4.3.4 
+* PlatformIO Home: 3.2.3 
+* framework-espidf 3.40001.200521 (4.0.1) 
+* toolchain-xtensa32 2.80200.200226 (8.2.0) 
+
 ## Getting Started  
 
 Two ways to use IOTA common library in a [PlatformIO](https://platformio.org/) project. 
@@ -73,7 +79,6 @@ framework = arduino
 monitor_speed = 9600
 
 build_flags =
-    -I${PROJECT_LIBDEPS_DIR}/${PIOENV}/iota_client
     -I${PROJECT_LIBDEPS_DIR}/${PIOENV}/Keccak/lib/common
     -I${PROJECT_LIBDEPS_DIR}/${PIOENV}/Keccak/lib/high/Keccak
     -I${PROJECT_LIBDEPS_DIR}/${PIOENV}/Keccak/lib/high/Keccak/FIPS202

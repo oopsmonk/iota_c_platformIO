@@ -44,6 +44,12 @@ void loop() {
 #include "utils/logger_helper.h"
 #include "utils/time.h"
 
+// IOTA Node configuration
+#define IOTA_NODE_URL "nodes.devnet.iota.org"
+#define IOTA_NODE_PORT 443
+#define USE_HTTPS 1
+
+// please replace it to your WIFI setting.
 #define APP_WIFI_SSID "wifi_ssd"
 #define APP_WIFI_PWD "wifi_pwd"
 
@@ -140,7 +146,7 @@ void setup() {
 void loop() {
   // put your main code here, to run repeatedly:
   Serial.println("Hello ESP32 Arduino!");
-  iota_client_service_t *serv = iota_client_core_init("nodes.devnet.iota.org", 443, amazon_ca1_pem);
+  iota_client_service_t *serv = iota_client_core_init(IOTA_NODE_URL, IOTA_NODE_PORT, USE_HTTPS ? amazon_ca1_pem : NULL);
   if (serv == NULL) {
     Serial.println("OOM\n");
     goto end;
