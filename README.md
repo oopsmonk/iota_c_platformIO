@@ -6,6 +6,12 @@ This project is tested on [ESP32-DevKitC V4](https://docs.espressif.com/projects
 
 [Install PlatformIO in VSCode IDE](https://docs.platformio.org/en/latest/ide/vscode.html#platformio-ide-for-vscode)  
 
+*Tested on*
+PlatformIO Core: 4.3.4
+PlatformIO Home: 3.2.3
+framework-espidf 3.40001.200521 (4.0.1)
+toolchain-xtensa32 2.80200.200226 (8.2.0)
+
 ## Getting Started  
 
 Two ways to use IOTA common library in a [PlatformIO](https://platformio.org/) project. 
@@ -18,7 +24,14 @@ cd iota_c_platformIO
 git checkout origin/esp_idf_esp32 -b esp_idf_esp32
 ```
 
-Run tests  
+Checks esp32 configure
+
+```bash
+cd iota_c_platformIO
+pio run -t menuconfig
+```
+
+Runs tests  
 
 ```bash
 cd iota_c_platformIO
@@ -64,7 +77,6 @@ lib_deps_external =
     https://github.com/troydhanson/uthash.git#1124f0a70b0714886402c3c0df03d037e3c4d57a
     https://github.com/oopsmonk/XKCP.git#pio_keccakp1600
     https://github.com/oopsmonk/iota.c.git#pio_esp32
-    https://github.com/embear/logger.git#v4.0.x
 
 [env:esp32dev]
 platform = espressif32
@@ -73,7 +85,6 @@ framework = espidf
 monitor_speed = 115200
 
 build_flags =
-    -I${PROJECT_LIBDEPS_DIR}/${PIOENV}/iota_client
     -I${PROJECT_LIBDEPS_DIR}/${PIOENV}/Keccak/lib/common
     -I${PROJECT_LIBDEPS_DIR}/${PIOENV}/Keccak/lib/high/Keccak
     -I${PROJECT_LIBDEPS_DIR}/${PIOENV}/Keccak/lib/high/Keccak/FIPS202

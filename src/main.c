@@ -16,7 +16,7 @@
 #include "common/trinary/tryte.h"
 
 void app_main() {
-    char addr[NUM_TRYTES_ADDRESS + 1] = {};
+  char addr[NUM_TRYTES_ADDRESS + 1] = {};
   // delay for console
   vTaskDelay(1000 / portTICK_PERIOD_MS);
 
@@ -24,9 +24,9 @@ void app_main() {
   char const *seed = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
   printf("SEED: %s\n", seed);
   char *tmp_addr = iota_sign_address_gen_trytes(seed, 0, 2);
-  if(tmp_addr == NULL){
-      printf("gen address failed\n");
-      goto end;
+  if (tmp_addr == NULL) {
+    printf("gen address failed\n");
+    goto end;
   }
   memcpy(addr, tmp_addr, NUM_TRYTES_ADDRESS);
   addr[NUM_TRYTES_ADDRESS] = '\0';
@@ -65,6 +65,11 @@ end:
 #include "cclient/api/extended/extended_api.h"
 #include "utils/logger_helper.h"
 #include "utils/time.h"
+
+// IOTA Node configuration
+#define IOTA_NODE_URL "nodes.devnet.iota.org"
+#define IOTA_NODE_PORT 443
+#define USE_HTTPS 1
 
 // please replace it to your WIFI setting.
 #define APP_WIFI_SSID "wifi_ssd"
@@ -211,7 +216,7 @@ void app_main() {
   xEventGroupWaitBits(wifi_event_group, CONNECTED_BIT, false, true, portMAX_DELAY);
 
   printf("Hello world! ESP-IDF %s\n", esp_get_idf_version());
-  iota_client_service_t *serv = iota_client_core_init("nodes.devnet.iota.org", 443, amazon_ca1_pem);
+  iota_client_service_t *serv = iota_client_core_init(IOTA_NODE_URL, IOTA_NODE_PORT, USE_HTTPS ? amazon_ca1_pem : NULL);
   if (serv == NULL) {
     printf("OOM\n");
     goto end;
