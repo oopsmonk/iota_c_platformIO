@@ -1,9 +1,16 @@
 #include <stdio.h>
 #include "mbed.h"
 
+#define NEW_COMMON
+
+#ifndef NEW_COMMON
 #include "common/helpers/sign.h"
 #include "common/model/transaction.h"
 #include "common/trinary/tryte.h"
+#else
+#include "model/address.h"
+#include "model/transaction.h"
+#endif
 
 #define USE_RANDOM_SEED 0
 
@@ -31,6 +38,7 @@ int main() {
   printf("SEED: %s\n", seed);
 #endif
 
+#ifndef NEW_COMMON
   t.start();
   int counter = 0;
   for (int i = 0; i < 5; i++) {
@@ -42,6 +50,19 @@ int main() {
     printf("time spent: %d us\n", counter);
     free(addr);
   }
+#else
+  t.start();
+  int counter = 0;
+  tryte_t addr[NUM_TRYTES_ADDRESS];
+  for (int i = 0; i < 5; i++) {
+    t.reset();
+    // get addresses from security level 2.
+    generate_address_trytes((tryte_t *)seed, i, ADDR_SECURITY_MEDIUM, addr);
+    counter = t.read_us();
+    printf("[%d] %.*s\n", i, NUM_TRYTES_ADDRESS, addr);
+    printf("time spent: %d us\n", counter);
+  }
 
+#endif
   return 0;
 }

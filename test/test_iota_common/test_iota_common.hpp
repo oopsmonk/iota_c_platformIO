@@ -4,11 +4,18 @@
 #include <unity.h>
 #include "mbed.h"
 
+#define NEW_COMMON
+
+#ifndef NEW_COMMON
 #include "common/crypto/kerl/kerl.h"
 #include "common/helpers/sign.h"
 #include "common/model/transaction.h"
 #include "common/trinary/tryte.h"
 #include "utils/input_validators.h"
+#else
+#include "model/address.h"
+#include "model/transaction.h"
+#endif
 
 char const expected_addr1[3][NUM_TRITS_HASH] = {
     "VZWHMT9AVBAKURC9FTEEPNUCMXPF9CFGWOUSKLZOUUCCEFOCPYTRVEISKXR9EDCAWKDHIEZ9UNZWVXAT9",
