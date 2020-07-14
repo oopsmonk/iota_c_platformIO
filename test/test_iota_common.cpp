@@ -1,12 +1,19 @@
 #include <Arduino.h>
 #include <unity.h>
 
+#define NEW_COMMON
+
+#ifndef NEW_COMMON
 #include "common/crypto/kerl/kerl.h"
 #include "common/helpers/sign.h"
 #include "common/model/transaction.h"
 #include "common/trinary/tryte.h"
 #include "test_iota_common.hpp"
 #include "utils/input_validators.h"
+#else
+#include "model/address.h"
+#include "model/transaction.h"
+#endif
 
 void setUp(void) {
   // set stuff up here
@@ -15,7 +22,7 @@ void setUp(void) {
 void tearDown(void) {
   // clean stuff up here
 }
-
+#ifndef NEW_COMMON
 void test_is_trytes() {
   tryte_t *hash0 = (tryte_t *)"XUERGHWTYRTFUYKFKXURKHMFEVLOIFTTCNTXOGLDPCZ9CJLKHROOPGNAQYFJEPGK9OKUQROUECBAVNXRX";
   TEST_ASSERT(is_trytes(hash0, 81) == true);
@@ -102,15 +109,76 @@ void test_gen_addresses(void) {
   }
 }
 
+#define NUM_OF_TIMES 10
+
+void bench_gen_address(uint8_t security){
+  char const *seed = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+  long run_time = 0;
+  long min = 0, max = 0, sum = 0;
+
+  for (int i = 0; i < NUM_OF_TIMES; i++) {
+    uint32_t curr_t = micros();
+    char *tmp_addr = iota_sign_address_gen_trytes(seed, i, security);
+    run_time = micros() - curr_t;
+    max = (i == 0 || run_time > max) ? run_time : max;
+    min = (i == 0 || run_time < min) ? run_time : min;
+    sum += run_time;
+    free(tmp_addr);
+  }
+  printf("security %d:\t%.3f\t%.3f\t%.3f\t%.3f\n", security, (min / 1000.0), (max / 1000.0),
+         (sum / NUM_OF_TIMES) / 1000.0, sum / 1000.0);
+}
+#else
+
+#define NUM_OF_TIMES 10
+void bench_gen_address(addr_security_t security) {
+  char const *seed = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+  long run_time = 0;
+  long min = 0, max = 0, sum = 0;
+  tryte_t addr[NUM_TRYTES_ADDRESS];
+
+  for (int i = 0; i < NUM_OF_TIMES; i++) {
+    uint32_t curr_t = micros();
+    generate_address_trytes((tryte_t *)seed, i, security, addr);
+    run_time = micros() - curr_t;
+    max = (i == 0 || run_time > max) ? run_time : max;
+    min = (i == 0 || run_time < min) ? run_time : min;
+    sum += run_time;
+  }
+  printf("security %d:\t%.3f\t%.3f\t%.3f\t%.3f\n", security, (min / 1000.0), (max / 1000.0),
+         (sum / NUM_OF_TIMES) / 1000.0, sum / 1000.0);
+}
+
+TaskHandle_t xHandle = NULL;
+void task_bench_addr(void * pvParameters){
+  printf("Bench address generation: %d times\n\t\tmin(ms)\tmax(ms)\tavg(ms)\ttotal(ms)\n", NUM_OF_TIMES);
+  bench_gen_address(ADDR_SECURITY_LOW);
+  bench_gen_address(ADDR_SECURITY_MEDIUM);
+  bench_gen_address(ADDR_SECURITY_HIGH);
+  vTaskSuspend(NULL);
+}
+
+#endif
+
 void setup() {
   delay(2000);  // service delay
   UNITY_BEGIN();
 
   printf("ESP-IDF version %s\n", esp_get_idf_version());
-  RUN_TEST(test_is_trytes);
-  RUN_TEST(test_one_absorb);
-  RUN_TEST(test_gen_addresses);
-
+  // RUN_TEST(test_is_trytes);
+  // RUN_TEST(test_one_absorb);
+  // RUN_TEST(test_gen_addresses);
+#ifndef NEW_COMMON
+  printf("Bench address generation: %d times\n\t\tmin(ms)\tmax(ms)\tavg(ms)\ttotal(ms)\n", NUM_OF_TIMES);
+  bench_gen_address(1);
+  bench_gen_address(2);
+  bench_gen_address(3);
+#else
+  xTaskCreatePinnedToCore(task_bench_addr, "bench_addr", 81920, NULL, 1, &xHandle, 1);
+  while(eTaskGetState(xHandle) != eSuspended){
+    vTaskDelay(5000 / portTICK_PERIOD_MS);
+  }
+#endif
   UNITY_END();  // stop unit testing
 }
 

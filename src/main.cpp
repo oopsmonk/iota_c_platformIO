@@ -1,21 +1,53 @@
 #include <Arduino.h>
 
-// #define IOTA_COMMON_EXAMPLE
+#define IOTA_COMMON_EXAMPLE
 
 #ifdef IOTA_COMMON_EXAMPLE
 /**
  * For application uses iota_common only
  */
 
+#define NEW_COMMON
+
+#ifndef NEW_COMMON
 #include "common/helpers/sign.h"
 #include "common/model/transaction.h"
 #include "common/trinary/tryte.h"
+#else
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "model/address.h"
+#include "model/transaction.h"
+#endif
 
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(9600);
 }
 
+#ifdef NEW_COMMON
+TaskHandle_t Task1_Handler;
+
+void gen_addr(void * pvParameters){
+  tryte_t addr[NUM_TRYTES_ADDRESS];
+  // put your main code here, to run repeatedly:
+  Serial.println("Hello ESP32 Arduino!");
+  char const *seed = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+  Serial.print("SEED: ");
+  Serial.println(seed);
+  generate_address_trytes((tryte_t *)seed, 0, ADDR_SECURITY_LOW, addr);
+  Serial.print("Address: ");
+  Serial.println((char *)addr);
+
+}
+void loop() {
+  // put your main code here, to run repeatedly:
+  Serial.println("Hello ESP32 Arduino!");
+  // xTaskCreatePinnedToCore(gen_addr, "gen_addr", 81920, NULL, 1, &Task1_Handler, 1);
+  xTaskCreatePinnedToCore(gen_addr, "gen_addr", 81920, NULL, 1, NULL, 1);
+  delay(10000);
+}
+#else
 void loop() {
   // put your main code here, to run repeatedly:
   Serial.println("Hello ESP32 Arduino!");
@@ -28,6 +60,7 @@ void loop() {
   free(addr);
   delay(10000);
 }
+#endif
 
 #else
 /**
