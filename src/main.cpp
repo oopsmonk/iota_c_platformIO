@@ -8,6 +8,7 @@
  */
 
 #define NEW_COMMON
+#define _SHIMMER_
 
 #ifndef NEW_COMMON
 #include "common/helpers/sign.h"
@@ -20,9 +21,17 @@
 #include "model/transaction.h"
 #endif
 
+#ifdef _SHIMMER_
+#include "address_ed25519.h"
+#endif
+
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(9600);
+  int ret = sodium_init();
+  if(ret != 0){
+    printf("sodium_init failed\n");
+  }
 }
 
 #ifdef NEW_COMMON
@@ -32,15 +41,43 @@ void gen_addr(void * pvParameters){
   tryte_t addr[NUM_TRYTES_ADDRESS];
   // put your main code here, to run repeatedly:
   Serial.println("Hello ESP32 Arduino!");
-  char const *seed = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
-  Serial.print("SEED: ");
-  Serial.println(seed);
-  generate_address_trytes((tryte_t *)seed, 0, ADDR_SECURITY_LOW, addr);
-  Serial.print("Address: ");
-  Serial.println((char *)addr);
+  // char const *seed = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+  // Serial.print("SEED: ");
+  // Serial.println(seed);
+  // generate_address_trytes((tryte_t *)seed, 0, ADDR_SECURITY_LOW, addr);
+  // Serial.print("Address: ");
+  // Serial.println((char *)addr);
+
+#ifdef _SHIMMER_
+  uint8_t shimmer_seed[SHIMMER_SEED_SIZE];
+  uint8_t shimmer_addr[SHIMMER_ADDR_SIZE] = {0};
+  uint8_t shimmer_addr_str[SHIMMER_ADDR_STR_SIZE] = {0};
+  // random_seed(shimmer_seed);
+  seed_from_string(shimmer_seed, "7rxy9mMdYKjcqh4V1xHRvFK2FRMieRgzzt4txA2m8Hqq");
+  get_address(shimmer_addr, shimmer_seed, 0);
+  size_t len = SHIMMER_ADDR_STR_SIZE;
+  seed_2_string((char *)shimmer_addr_str, &len, shimmer_seed);
+  printf("seed: %s\n", shimmer_addr_str);
+
+  address_2_string((char *)shimmer_addr_str, shimmer_addr);
+  printf("addr: %s\n", shimmer_addr_str);
+
+  uint32_t data_len = 4;
+  uint8_t signature[SHIMMER_SIGNATURE_SIZE + data_len];
+  uint8_t data[data_len] = {1, 3, 3, 8};
+  sign_signature(signature, shimmer_seed, 7, data, data_len);
+  // printf("sign: ");
+  // dump_hex(signature, SHIMMER_SIGNATURE_SIZE+data_len);
+
+  printf("verify: %d\n", sign_verify_signature(shimmer_seed, 7, signature, data, data_len));
+
+  test_seed();
+#endif
+ vTaskSuspend(NULL);
 
 }
 void loop() {
+  delay(1000);
   // put your main code here, to run repeatedly:
   Serial.println("Hello ESP32 Arduino!");
   // xTaskCreatePinnedToCore(gen_addr, "gen_addr", 81920, NULL, 1, &Task1_Handler, 1);

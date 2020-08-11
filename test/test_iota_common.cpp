@@ -2,6 +2,7 @@
 #include <unity.h>
 
 #define NEW_COMMON
+#define _SHIMMER_ 
 
 #ifndef NEW_COMMON
 #include "common/crypto/kerl/kerl.h"
@@ -13,6 +14,10 @@
 #else
 #include "model/address.h"
 #include "model/transaction.h"
+#endif
+
+#ifdef _SHIMMER_
+#include "address_ed25519.h"
 #endif
 
 void setUp(void) {
@@ -149,12 +154,35 @@ void bench_gen_address(addr_security_t security) {
          (sum / NUM_OF_TIMES) / 1000.0, sum / 1000.0);
 }
 
+void bench_shimmer_addr(){
+  uint8_t seed[SHIMMER_SEED_SIZE];
+  uint8_t addr[SHIMMER_ADDR_SIZE];
+  // char addr_str[SHIMMER_ADDR_STR_SIZE];
+  long run_time = 0;
+  long min = 0, max = 0, sum = 0;
+
+  seed_from_string(seed, "3aPVf52nNUV27xvvTL6XA972p8jHdFcJac498EteGVyJ");
+
+  for(int i = 0; i < NUM_OF_TIMES; i++){
+    uint32_t curr_t = micros();
+    get_address(addr, seed, i);
+    run_time = micros() - curr_t;
+    max = (i == 0 || run_time > max) ? run_time : max;
+    min = (i == 0 || run_time < min) ? run_time : min;
+    sum += run_time;
+  }
+  printf("shimmer:\t%.3f\t%.3f\t%.3f\t%.3f\n", (min / 1000.0), (max / 1000.0),
+         (sum / NUM_OF_TIMES) / 1000.0, sum / 1000.0);
+}
+
 TaskHandle_t xHandle = NULL;
 void task_bench_addr(void * pvParameters){
-  printf("Bench address generation: %d times\n\t\tmin(ms)\tmax(ms)\tavg(ms)\ttotal(ms)\n", NUM_OF_TIMES);
+  printf("Bench address generation: %d times\n.\t\tmin(ms)\t\tmax(ms)\t\tavg(ms)\t\ttotal(ms)\n", NUM_OF_TIMES);
   bench_gen_address(ADDR_SECURITY_LOW);
   bench_gen_address(ADDR_SECURITY_MEDIUM);
   bench_gen_address(ADDR_SECURITY_HIGH);
+
+  bench_shimmer_addr();
   vTaskSuspend(NULL);
 }
 
