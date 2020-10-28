@@ -189,7 +189,6 @@ void app_main() {
   // init wifi
   wifi_conn_init();
 
-#if 1
   // init wallet instance
   if (init_wallet()) {
     printf("Init wallet instance failed\n");
@@ -241,30 +240,5 @@ void app_main() {
     /* linenoise allocates line buffer on the heap, so need to free it */
     linenoiseFree(line);
   }
-#else
-  byte_t seed[TANGLE_SEED_BYTES];
-  printf("Hello world! ESP-IDF %s\n", esp_get_idf_version());
-
-  if (config_validation() != 0) {
-    ESP_LOGE(TAG, "Wallet configure validation failed");
-    reboot();
-  }
-
-  if (strcmp(CONFIG_WALLET_SEED, "random") == 0) {
-    random_seed(seed);
-  } else {
-    seed_from_base58(CONFIG_WALLET_SEED, seed);
-  }
-
-  wallet_t* w = wallet_init(CONFIG_NODE_ENDPOINT, CONFIG_NODE_PORT, seed, CONFIG_WALLET_LAST_ADDR,
-                            CONFIG_WALLET_FIRST_UNSPENT, CONFIG_WALLET_LAST_UNSPENT);
-  if (w) {
-    wallet_status_print(w);
-    bool synced = wallet_is_node_synced(w);
-    printf("Is endpoint synced? %s\n", synced ? "Yes" : "No");
-    printf("balance: %" PRIu64 "\n", wallet_balance(w));
-    wallet_free(w);
-  }
-#endif
   reboot();
 }
