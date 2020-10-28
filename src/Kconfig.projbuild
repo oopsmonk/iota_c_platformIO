@@ -1,5 +1,41 @@
 menu "Pollen Client configuration"
 
+    config WALLET_SEED
+        string "SEED"
+        default "random"
+        help
+            The seed of this wallet
+
+    config WALLET_LAST_ADDR
+        int "Last address index"
+        default 0
+        help
+            Set the last address index
+
+    config WALLET_FIRST_UNSPENT
+        int "First unspent address index"
+        default 0
+        help
+            Set the first unspent address index
+
+    config WALLET_LAST_UNSPENT
+        int "Last unspent address index"
+        default 0
+        help
+            Set the last unspent address index
+
+    config NODE_ENDPOINT 
+        string "Node endpoint"
+        default ""
+        help
+            Set the connected node endpoint
+
+    config NODE_PORT
+        int "Port Number"
+        default 0
+        help
+            Set the port number of endpoint
+
     config WIFI_SSID
         string "WiFi SSID"
         default "myssid"

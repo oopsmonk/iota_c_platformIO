@@ -11,6 +11,17 @@
 #include "freertos/task.h"
 #include "nvs_flash.h"
 
+// console system
+#include "argtable3/argtable3.h"
+#include "driver/uart.h"
+#include "esp_console.h"
+#include "esp_vfs_dev.h"
+#include "esp_vfs_fat.h"
+#include "linenoise/linenoise.h"
+#include "nvs.h"
+
+#include "wallet_cli.h"
+
 #define APP_WIFI_SSID CONFIG_WIFI_SSID
 #define APP_WIFI_PWD CONFIG_WIFI_PASSWORD
 #define APP_WIFI_RETRY CONFIG_WIFI_RETRY
@@ -113,16 +124,56 @@ static void initialize_nvs() {
   ESP_ERROR_CHECK(err);
 }
 
-void app_main() {
-  // delay for console
-  vTaskDelay(1000 / portTICK_PERIOD_MS);
+static void initialize_console() {
+  /* Drain stdout before reconfiguring it */
+  fflush(stdout);
+  fsync(fileno(stdout));
 
-  initialize_nvs();
-  // init wifi
-  wifi_conn_init();
+  /* Disable buffering on stdin */
+  setvbuf(stdin, NULL, _IONBF, 0);
 
-  printf("Hello world! ESP-IDF %s\n", esp_get_idf_version());
+  /* Minicom, screen, idf_monitor send CR when ENTER key is pressed */
+  esp_vfs_dev_uart_set_rx_line_endings(ESP_LINE_ENDINGS_CR);
+  /* Move the caret to the beginning of the next line on '\n' */
+  esp_vfs_dev_uart_set_tx_line_endings(ESP_LINE_ENDINGS_CRLF);
 
+  /* Configure UART. Note that REF_TICK is used so that the baud rate remains
+   * correct while APB frequency is changing in light sleep mode.
+   */
+  const uart_config_t uart_config = {.baud_rate = CONFIG_CONSOLE_UART_BAUDRATE,
+                                     .data_bits = UART_DATA_8_BITS,
+                                     .parity = UART_PARITY_DISABLE,
+                                     .stop_bits = UART_STOP_BITS_1,
+                                     .source_clk = UART_SCLK_REF_TICK};
+
+  /* Install UART driver for interrupt-driven reads and writes */
+  ESP_ERROR_CHECK(uart_driver_install(CONFIG_ESP_CONSOLE_UART_NUM, 256, 0, 0, NULL, 0));
+
+  ESP_ERROR_CHECK(uart_param_config(CONFIG_ESP_CONSOLE_UART_NUM, &uart_config));
+
+  /* Tell VFS to use UART driver */
+  esp_vfs_dev_uart_use_driver(CONFIG_ESP_CONSOLE_UART_NUM);
+
+  /* Initialize the console */
+  esp_console_config_t console_config = {
+      .max_cmdline_args = 8, .max_cmdline_length = 256, .hint_color = atoi(LOG_COLOR_CYAN)};
+  ESP_ERROR_CHECK(esp_console_init(&console_config));
+
+  /* Configure linenoise line completion library */
+  /* Enable multiline editing. If not set, long commands will scroll within
+   * single line.
+   */
+  linenoiseSetMultiLine(1);
+
+  /* Tell linenoise where to get command completions and hints */
+  linenoiseSetCompletionCallback(&esp_console_get_completion);
+  linenoiseSetHintsCallback((linenoiseHintsCallback*)&esp_console_get_hint);
+
+  /* Set command history size */
+  linenoiseHistorySetMaxLen(50);
+}
+
+static void reboot() {
   for (int i = 20; i >= 0; i--) {
     printf("Restarting in %d seconds...\n", i);
     vTaskDelay(1000 / portTICK_PERIOD_MS);
@@ -131,4 +182,89 @@ void app_main() {
 
   fflush(stdout);
   esp_restart();
+}
+
+void app_main() {
+  initialize_nvs();
+  // init wifi
+  wifi_conn_init();
+
+#if 1
+  // init wallet instance
+  if (init_wallet()) {
+    printf("Init wallet instance failed\n");
+    reboot();
+  }
+
+  // init console
+  initialize_console();
+  esp_console_register_help_command();
+  register_wallet_commands();
+
+  ESP_LOGI(TAG, "esp-idf version: %s, app_version: %s", esp_get_idf_version(), APP_WALLET_VERSION);
+
+  char const* prompt = "IOTA> ";
+  int probe_status = linenoiseProbe();
+  if (probe_status) { /* zero indicates success */
+    printf(
+        "\n"
+        "Your terminal application does not support escape sequences.\n"
+        "Line editing and history features are disabled.\n"
+        "On Windows, try using Putty instead.\n");
+    linenoiseSetDumbMode(1);
+    prompt = "IOTA> ";
+  }
+
+  while (1) {
+    /* Get a line when ENTER is pressed */
+    char* line = linenoise(prompt);
+    if (line == NULL) { /* Ignore empty lines */
+      continue;
+    }
+
+    // add command to history
+    linenoiseHistoryAdd(line);
+
+    /* Try to run the command */
+    int ret;
+    esp_err_t err = esp_console_run(line, &ret);
+    if (err == ESP_ERR_NOT_FOUND) {
+      printf("Unrecognized command\n");
+    } else if (err == ESP_ERR_INVALID_ARG) {
+      // command was empty
+    } else if (err == ESP_OK && ret != ESP_OK) {
+      printf("Command returned non-zero error code: 0x%x (%s)\n", ret, esp_err_to_name(err));
+    } else if (err != ESP_OK) {
+      printf("Internal error: %s\n", esp_err_to_name(err));
+    }
+
+    /* linenoise allocates line buffer on the heap, so need to free it */
+    linenoiseFree(line);
+  }
+#else
+  byte_t seed[TANGLE_SEED_BYTES];
+  printf("Hello world! ESP-IDF %s\n", esp_get_idf_version());
+
+  if (config_validation() != 0) {
+    ESP_LOGE(TAG, "Wallet configure validation failed");
+    reboot();
+  }
+
+  if (strcmp(CONFIG_WALLET_SEED, "random") == 0) {
+    random_seed(seed);
+  } else {
+    seed_from_base58(CONFIG_WALLET_SEED, seed);
+  }
+
+  wallet_t* w = wallet_init(CONFIG_NODE_ENDPOINT, CONFIG_NODE_PORT, seed, CONFIG_WALLET_LAST_ADDR,
+                            CONFIG_WALLET_FIRST_UNSPENT, CONFIG_WALLET_LAST_UNSPENT);
+  if (w) {
+    wallet_status_print(w);
+    bool synced = wallet_is_node_synced(w);
+    printf("Is endpoint synced? %s\n", synced ? "Yes" : "No");
+    printf("balance: %" PRIu64 "\n", wallet_balance(w));
+    wallet_free(w);
+  }
+#endif
+  reboot();
 }
