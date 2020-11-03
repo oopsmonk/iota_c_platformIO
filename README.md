@@ -9,8 +9,15 @@ A CLI wallet to interact with Pollen network on ESP32.
 
 # Support Commands (WIP)
 
-* node_info: shows status of the connected node.
-* balance: display current wallet balance
+* `node_info`: shows status of the connected node.
+* `balance`: display current wallet balance
+* `addresses`: list wallet addresses
+* `wallet_info`: display wallet status
+* `req_funds`: request funds from faucet
+* `new_address`: generate a new address
+* `seed`: display the seed of this wallet
+* `send_funds`: issue a payment
+* `save`: save wallet settings (TODO)
 
 # Disclaimer
 
