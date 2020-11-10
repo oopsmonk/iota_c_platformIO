@@ -21,7 +21,7 @@ A CLI wallet to interact with Pollen network on ESP32.
 
 # Disclaimer
 
-This application is based on [pollen_qianbao](https://github.com/oopsmonk/pollen_qianbao), it is under developing and tested with [GoShimmer-0.3.0](https://github.com/iotaledger/goshimmer/releases/tag/v0.3.0) and [espressif32 v2.0.0](https://github.com/platformio/platform-espressif32/releases/tag/v2.0.0).  
+This application is based on [goshimmer-client-c](https://github.com/iotaledger/goshimmer-client-c), it is under developing and tested with [GoShimmer-0.3.0](https://github.com/iotaledger/goshimmer/releases/tag/v0.3.0) and [espressif32 v2.0.0](https://github.com/platformio/platform-espressif32/releases/tag/v2.0.0).  
 
 It's not guarantee to work with other GoShimmer release or systems, please use with caution!  
 
