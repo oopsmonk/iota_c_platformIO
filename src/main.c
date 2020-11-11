@@ -202,7 +202,7 @@ void app_main() {
 
   ESP_LOGI(TAG, "esp-idf version: %s, app_version: %s", esp_get_idf_version(), APP_WALLET_VERSION);
 
-  char const* prompt = "IOTA> ";
+  char const* prompt = "Pollen> ";
   int probe_status = linenoiseProbe();
   if (probe_status) { /* zero indicates success */
     printf(
@@ -211,7 +211,7 @@ void app_main() {
         "Line editing and history features are disabled.\n"
         "On Windows, try using Putty instead.\n");
     linenoiseSetDumbMode(1);
-    prompt = "IOTA> ";
+    prompt = "Pollen> ";
   }
 
   while (1) {
