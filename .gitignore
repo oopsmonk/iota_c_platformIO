@@ -1,1 +1,3 @@
 .pio
+sdkconfig
+sdkconfig.old
