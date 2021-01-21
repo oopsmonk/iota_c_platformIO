@@ -195,14 +195,14 @@ void app_main() {
     reboot();
   }
 
+  ESP_LOGI(TAG, "esp-idf version: %s, app_version: %s", esp_get_idf_version(), APP_WALLET_VERSION);
+
   // init console
   initialize_console();
   esp_console_register_help_command();
   register_wallet_commands();
 
-  ESP_LOGI(TAG, "esp-idf version: %s, app_version: %s", esp_get_idf_version(), APP_WALLET_VERSION);
-
-  char const* prompt = "Pollen> ";
+  char const* prompt = "Chrysalis> ";
   int probe_status = linenoiseProbe();
   if (probe_status) { /* zero indicates success */
     printf(

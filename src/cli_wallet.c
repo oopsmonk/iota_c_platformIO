@@ -19,7 +19,34 @@
 
 #include "cli_wallet.h"
 
+#include "client/api/v1/send_message.h"
+#include "wallet/wallet.h"
+
 static const char *TAG = "wallet";
+
+iota_wallet_t *wallet = NULL;
+
+#define DIM(x) (sizeof(x) / sizeof(*(x)))
+static const char *iota_unit[] = {"Pi", "Ti", "Gi", "Mi", "Ki", "i"};
+static const uint64_t peta_i = 1000ULL * 1000ULL * 1000ULL * 1000ULL * 1000ULL;
+
+void print_iota(uint64_t value) {
+  char value_str[32] = {};
+  uint64_t multiplier = peta_i;
+  int i;
+  for (i = 0; i < DIM(iota_unit); i++, multiplier /= 1000) {
+    if (value < multiplier) {
+      continue;
+    }
+    if (value % multiplier == 0) {
+      sprintf(value_str, "%" PRIu64 "%s", value / multiplier, iota_unit[i]);
+    } else {
+      sprintf(value_str, "%.2f%s", (float)value / multiplier, iota_unit[i]);
+    }
+    break;
+  }
+  printf("%s", value_str);
+}
 
 // 0 on success
 static int config_validation() {
@@ -137,6 +164,148 @@ static void register_stack_info() {
   ESP_ERROR_CHECK(esp_console_cmd_register(&stack_info_cmd));
 }
 
+/* 'address' command */
+static struct {
+  struct arg_dbl *index;
+  struct arg_end *end;
+} get_addr_args;
+
+static int fn_get_address(int argc, char **argv) {
+  byte_t addr_wit_version[IOTA_ADDRESS_BYTES] = {};
+  char tmp_bech32_addr[100] = {};
+  uint32_t addr_index = 0;
+  int nerrors = arg_parse(argc, argv, (void **)&get_addr_args);
+  if (nerrors != 0) {
+    arg_print_errors(stderr, get_addr_args.end, argv[0]);
+    return -1;
+  }
+  addr_index = (uint32_t)get_addr_args.index->dval[0];
+  addr_wit_version[0] = ADDRESS_VER_ED25519;
+  wallet_address_by_index(wallet, addr_index, addr_wit_version + 1);
+  address_2_bech32(addr_wit_version, "atoi", tmp_bech32_addr);
+  printf("Addr[%" PRIu32 "]\n", addr_index);
+  // print ed25519 address without version filed.
+  printf("\t");
+  dump_hex_str(addr_wit_version + 1, ED25519_ADDRESS_BYTES);
+  // print out
+  printf("\t%s\n", tmp_bech32_addr);
+  return 0;
+}
+
+static void register_get_address() {
+  // get_addr_args.address = arg_str1(NULL, NULL, "<ADDRESS>", "An Address hash");
+  get_addr_args.index = arg_dbl1(NULL, NULL, "<index>", "Address index");
+  get_addr_args.end = arg_end(1);
+  const esp_console_cmd_t get_address_cmd = {
+      .command = "address",
+      .help = "Get the address from an index",
+      .hint = " <index>",
+      .func = &fn_get_address,
+      .argtable = &get_addr_args,
+  };
+  ESP_ERROR_CHECK(esp_console_cmd_register(&get_address_cmd));
+}
+
+/* 'balance' command */
+static struct {
+  struct arg_dbl *index;
+  struct arg_end *end;
+} get_balance_args;
+
+static int fn_get_balance(int argc, char **argv) {
+  int nerrors = arg_parse(argc, argv, (void **)&get_balance_args);
+  uint64_t balance = 0;
+  uint32_t addr_index = 0;
+  if (nerrors != 0) {
+    arg_print_errors(stderr, get_balance_args.end, argv[0]);
+    return -1;
+  }
+
+  addr_index = get_balance_args.index->dval[0];
+  if (wallet_balance_by_index(wallet, addr_index, &balance) != 0) {
+    return -1;
+  }
+  // printf("balance on address [%" PRIu32 "]: %" PRIu64 "\n", addr_index, balance);
+  printf("balance on address [%" PRIu32 "]: ", addr_index);
+  print_iota(balance);
+  printf("\n");
+  return 0;
+}
+
+static void register_get_balance() {
+  // get_balance_args.address = arg_str1(NULL, NULL, "<ADDRESS>", "An Address hash");
+  get_balance_args.index = arg_dbl1(NULL, NULL, "<index>", "Address index");
+  get_balance_args.end = arg_end(1);
+  const esp_console_cmd_t get_balance_cmd = {
+      .command = "balance",
+      .help = "Get the balance from an address index",
+      .hint = " <index>",
+      .func = &fn_get_balance,
+      .argtable = &get_balance_args,
+  };
+  ESP_ERROR_CHECK(esp_console_cmd_register(&get_balance_cmd));
+}
+
+/* 'send' command */
+static struct {
+  struct arg_dbl *sender;
+  struct arg_str *receiver;
+  struct arg_dbl *balance;
+  struct arg_end *end;
+} send_msg_args;
+
+static int fn_send_msg(int argc, char **argv) {
+  int err = 0;
+  uint64_t balance = 0;
+  char data[] = "sent from esp32 via iota.c";
+  int nerrors = arg_parse(argc, argv, (void **)&send_msg_args);
+  byte_t recv[IOTA_ADDRESS_BYTES] = {};
+  if (nerrors != 0) {
+    arg_print_errors(stderr, send_msg_args.end, argv[0]);
+    return -1;
+  }
+
+  // convert receiver to binary
+  if ((err = address_from_bech32("atoi", send_msg_args.receiver->sval[0], recv))) {
+    printf("convert receiver address failed\n");
+    return -1;
+  }
+  balance = (uint64_t)send_msg_args.balance->dval[0] * 1000000;
+
+  if (balance > 0) {
+    printf("send ");
+    print_iota(balance);
+    printf(" to %s\n", send_msg_args.receiver->sval[0]);
+    printf("\n");
+  } else {
+    printf("send indexation payload to tangle");
+  }
+
+  err = wallet_send(wallet, (uint32_t)send_msg_args.sender->dval[0], recv + 1, balance, "ESP32\xF0\x9F\x8D\xBB",
+                    (byte_t *)data, sizeof(data));
+  if (err) {
+    printf("send message failed\n");
+    return -1;
+  }
+
+  return 0;
+}
+
+static void register_send_msg() {
+  send_msg_args.sender = arg_dbl1(NULL, NULL, "<index>", "Address index");
+  send_msg_args.receiver = arg_str1(NULL, NULL, "<receiver>", "Receiver address");
+  send_msg_args.balance = arg_dbl1(NULL, NULL, "<balance>", "balance");
+  send_msg_args.end = arg_end(20);
+  const esp_console_cmd_t send_msg_cmd = {
+      .command = "send",
+      .help = "send message to tangle",
+      .hint = " <addr_index> <receiver> <balance> <index> <data>",
+      .func = &fn_send_msg,
+      .argtable = &send_msg_args,
+  };
+  ESP_ERROR_CHECK(esp_console_cmd_register(&send_msg_cmd));
+}
+
 //============= Public functions====================
 
 void register_wallet_commands() {
@@ -148,11 +317,14 @@ void register_wallet_commands() {
   register_restart();
 
   // wallet APIs
+  register_get_balance();
+  register_send_msg();
+  register_get_address();
 }
 
 int init_wallet() {
-#if 0
-  byte_t seed[TANGLE_SEED_BYTES];
+  byte_t seed[IOTA_SEED_BYTES] = {};
+  uint64_t balance = 0;
 
   if (config_validation() != 0) {
     return -1;
@@ -161,19 +333,19 @@ int init_wallet() {
   if (strcmp(CONFIG_WALLET_SEED, "random") == 0) {
     random_seed(seed);
   } else {
-    seed_from_base58(CONFIG_WALLET_SEED, seed);
+    hex2bin(CONFIG_WALLET_SEED, strlen(CONFIG_WALLET_SEED), seed, sizeof(seed));
   }
 
-  w_ctx = wallet_init(CONFIG_NODE_ENDPOINT, CONFIG_NODE_PORT, seed, CONFIG_WALLET_LAST_ADDR,
-                      CONFIG_WALLET_FIRST_UNSPENT, CONFIG_WALLET_LAST_UNSPENT);
-  if (w_ctx == NULL) {
-    printf("wallet create instance failed\n");
+  wallet = wallet_create(seed, "m/44'/4218'/0'/0'");
+  if (!wallet) {
+    ESP_LOGE(TAG, "wallet create failed\n");
     return -1;
   }
-  wallet_status_print(w_ctx);
-  bool synced = wallet_is_node_synced(w_ctx);
-  printf("Is endpoint synced? %s\n", synced ? "Yes" : "No");
-  printf("balance: %" PRIu64 "\n", wallet_balance(w_ctx));
-#endif
+  wallet_set_endpoint(wallet, CONFIG_NODE_ENDPOINT, CONFIG_NODE_PORT);
+  // get balance
+  wallet_balance_by_index(wallet, 0, &balance);
+  printf("balance on address [0]: ");
+  print_iota(balance);
+  printf("\n");
   return 0;
 }
