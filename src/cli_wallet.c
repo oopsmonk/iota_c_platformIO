@@ -299,7 +299,7 @@ static void register_send_msg() {
   const esp_console_cmd_t send_msg_cmd = {
       .command = "send",
       .help = "send message to tangle",
-      .hint = " <addr_index> <receiver> <balance> <index> <data>",
+      .hint = " <addr_index> <receiver> <balance>",
       .func = &fn_send_msg,
       .argtable = &send_msg_args,
   };
