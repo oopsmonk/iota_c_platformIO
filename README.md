@@ -1,7 +1,6 @@
 # IOTA Chrysalis CLI Wallet
 
-A simple CLI wallet to interact with IOTA Chrysalis network on ESP32
-A CLI wallet to interact with Pollen network on ESP32.
+A simple CLI wallet to interact with IOTA Chrysalis network on ESP32.
 
 # System requirements
 
