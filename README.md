@@ -26,7 +26,7 @@ It's not guarantee to work on other release or system, please use with caution!
 ```
 git clone https://github.com/oopsmonk/iota_c_platformIO.git
 cd iota_c_platformIO
-git checkout origin/dev_pollen_esp32 -b dev_esp32_chrysalis
+git checkout origin/dev_esp32_chrysalis -b dev_esp32_chrysalis
 code .
 ```
 
